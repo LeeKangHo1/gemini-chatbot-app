@@ -1,9 +1,11 @@
 <!-- src/views/ChatView.vue -->
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/stores/chatStore';
-import { marked } from 'marked'; // <--- 1. marked 라이브러리 임포트
+import { marked } from 'marked';
+// 1. 스토어 액션 대신 우리가 만든 서비스 로직을 임포트합니다.
+import { handleSendMessageLogic } from '@/services/chatService.js';
 
 const chatStore = useChatStore();
 const { messages, isLoading } = storeToRefs(chatStore);
@@ -11,9 +13,8 @@ const { messages, isLoading } = storeToRefs(chatStore);
 const userInput = ref('');
 const messageContainer = ref(null);
 
-// 2. 봇의 메시지를 Markdown으로 변환하는 computed 속성
 const renderMarkdown = (text) => {
-  // marked.parse가 비동기가 될 수 있으므로 동기 옵션 사용 또는 비동기 처리
+  if (!text) return '';
   return marked.parse(text, { breaks: true, gfm: true });
 };
 
@@ -27,9 +28,11 @@ watch(messages, () => {
 
 const handleSendMessage = async () => {
   const message = userInput.value.trim();
+  // 2. 서비스 함수는 자체적으로 빈 입력값 처리를 하므로 여기서도 체크
   if (!message) return;
   userInput.value = '';
-  await chatStore.sendMessage(message);
+  // 3. 스토어 액션 호출을 새로운 서비스 함수 호출로 변경합니다.
+  await handleSendMessageLogic(message);
 };
 </script>
 
