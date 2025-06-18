@@ -1,0 +1,16 @@
+// src/assets/scss/main.scss
+
+// 1. Bootstrap SCSS 파일 임포트 (최신 방식으로)
+@use "bootstrap/scss/bootstrap" as *;
+
+// Pretendard 웹폰트 CDN (가독성을 위해 추천)
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+
+// 2. 눈이 편안한 전체 배경색 설정
+body {
+  background-color: #E8EBF0;   // Bootstrap의 $gray-100 색상, 부드러운 느낌
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+}
+
+// Pretendard 웹폰트 CDN (선택사항이지만 추천)
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
