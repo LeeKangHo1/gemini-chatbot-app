@@ -3,12 +3,12 @@
 
   <div class="chat-wrapper d-flex flex-column">
     <!-- 타이틀 아래 가운데 정렬된 선택 UI -->
-    <div class="text-center mt-2 mb-2">
+    <!-- <div class="text-center mt-2 mb-2">
       <label class="me-2">최근 몇 개의 메시지를 보낼까요?</label>
       <select v-model="sendHistoryCount" class="form-select d-inline-block w-auto">
         <option v-for="n in [5, 10, 15, 20]" :key="n" :value="n">{{ n }}개</option>
       </select>
-    </div>
+    </div> -->
     <transition-group name="message-fade" tag="div" class="message-list flex-grow-1 p-3">
       <div v-for="message in messages" :key="message.id" class="message-item d-flex mb-4"
         :class="{ 'user': message.role === 'user', 'bot': message.role === 'bot' }">
@@ -67,10 +67,11 @@ import { ref, watch, nextTick, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/stores/chatStore';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { handleSendMessageLogic } from '@/services/chatService.js';
 
 const chatStore = useChatStore();
-const { sendHistoryCount } = storeToRefs(chatStore);
+// ❗️ sendHistoryCount 관련 코드는 모두 제거합니다.
 const { messages, isLoading } = storeToRefs(chatStore);
 
 const userInput = ref('');
@@ -93,6 +94,9 @@ watch(messages, async () => {
 }, { deep: true });
 
 onMounted(async () => {
+   // ✅ 1. 컴포넌트가 마운트되면 스토어의 자동 저장 기능을 활성화합니다.
+  chatStore.subscribeToChanges();
+  
   await nextTick();
   if (bottomRef.value) {
     bottomRef.value.scrollIntoView({ behavior: 'auto' });

@@ -1,12 +1,6 @@
-// src/services/chatService.js
-
 import { useChatStore } from '@/stores/chatStore';
 import { sendMessageToBot } from '@/services/api';
 
-/**
- * 사용자 메시지 전송과 관련된 전체 비즈니스 로직을 처리하는 함수
- * @param {string} userInput - 사용자가 입력한 텍스트
- */
 export const handleSendMessageLogic = async (userInput) => {
   const chatStore = useChatStore();
 
@@ -15,37 +9,41 @@ export const handleSendMessageLogic = async (userInput) => {
   chatStore.isLoading = true;
   chatStore.error = null;
 
-  // 사용자 메시지를 바로 표시
-  const userMessage = {
-    id: Date.now(),
-    role: 'user',
-    text: userInput,
-  };
+  const userMessage = { id: Date.now(), role: 'user', text: userInput };
   chatStore.messages.push(userMessage);
 
   try {
-    // 히스토리 구성
-    const historyPayload = chatStore.messages
-      .filter(msg => !msg.isError && msg.role !== 'bot')
-      .map((msg) => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.text }],
-      }));
+    let historyForApi = [];
 
-    const count = chatStore.sendHistoryCount  // ✅ 사용자가 지정한 개수
-    const historyForApi = historyPayload.slice(-count)
+    // ✅ 세션 ID가 없을 때 (앱 로딩 후 첫 전송)
+    if (!chatStore.sessionId) {
+      console.log("🚀 첫 요청: LocalStorage의 전체 대화 기록을 API로 전송합니다.");
 
-    // API 호출
-    const response = await sendMessageToBot(userInput, historyForApi);
-    // console.log("🔍 API 응답:", response);
+      // Pinia 스토어에 있는 모든 메시지를 API 형식으로 변환
+      const historyPayload = chatStore.messages
+        .filter(msg => !msg.isError) // 에러 메시지는 제외
+        .map(msg => ({
+          role: msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.text }],
+        }));
+
+      // ❗️ 방금 추가한 사용자 메시지(userInput)는 history가 아닌,
+      // API의 메인 `message` 파라미터로 전송되므로 히스토리에서는 제외합니다.
+      // 따라서 payload에서 마지막 요소를 제거합니다.
+      historyForApi = historyPayload.slice(0, -1);
+    }
+
+    const response = await sendMessageToBot(userInput, historyForApi, chatStore.sessionId);
+
+    if (response.sessionId && !chatStore.sessionId) {
+      chatStore.sessionId = response.sessionId;
+    }
 
     chatStore.messages.push({
       id: Date.now(),
       role: 'bot',
       text: response.reply,
     });
-    // console.log("📤 선택된 전송 메시지 개수:", chatStore.sendHistoryCount)
-    // console.log("📦 실제 전송되는 메시지:", historyForApi)
 
   } catch (error) {
     console.error('❌ API 통신 오류:', error);
@@ -54,8 +52,8 @@ export const handleSendMessageLogic = async (userInput) => {
       role: 'bot',
       text: '죄송합니다, 응답을 가져오는 중 문제가 발생했습니다.',
       isError: true,
-      retry: true, // 👈 재시도 버튼을 표시하기 위한 플래그
-      originalText: userInput // 👈 다시 전송할 텍스트 저장
+      retry: true,
+      originalText: userInput,
     });
   } finally {
     chatStore.isLoading = false;
