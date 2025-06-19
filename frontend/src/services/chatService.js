@@ -15,16 +15,16 @@ export const handleSendMessageLogic = async (userInput) => {
   chatStore.isLoading = true;
   chatStore.error = null;
 
-  // 1. 사용자 메시지를 화면에 즉시 추가 (기존과 동일)
-  chatStore.messages.push({
+  // 사용자 메시지를 바로 표시
+  const userMessage = {
     id: Date.now(),
     role: 'user',
     text: userInput,
-  });
+  };
+  chatStore.messages.push(userMessage);
 
   try {
-    // 2. 백엔드에 보낼 'history' 포맷으로 변환 (기존과 동일)
-    //    이 부분은 AI에게 문맥을 전달하기 위해 여전히 필요합니다.
+    // 히스토리 구성
     const historyPayload = chatStore.messages
       .filter(msg => !msg.isError && msg.role !== 'bot') 
       .map((msg) => ({
@@ -34,27 +34,24 @@ export const handleSendMessageLogic = async (userInput) => {
 
     const historyForApi = historyPayload.slice(0, -1);
 
-    // 3. API 호출 (기존과 동일)
+    // API 호출
     const response = await sendMessageToBot(userInput, historyForApi);
+    // console.log("🔍 API 응답:", response);
 
-    // 4. === 여기가 핵심 변경점입니다 ===
-    //    전체 목록을 교체하는 대신, AI의 새 답변만 배열에 추가합니다.
     chatStore.messages.push({
-      id: Date.now() + 1, // 충돌 방지를 위해 ID에 약간의 값을 더합니다.
+      id: Date.now(),
       role: 'bot',
-      text: response.reply, // 백엔드에서 받은 'reply'를 사용합니다.
-      isError: false
+      text: response.reply,
     });
-
-  } catch (err) {
-    const errorMessage = '죄송합니다, 응답을 가져오는 중 문제가 발생했습니다.';
-    chatStore.error = errorMessage;
-    
+  } catch (error) {
+    console.error('❌ API 통신 오류:', error);
     chatStore.messages.push({
-        id: Date.now() + 1,
-        role: 'bot',
-        text: errorMessage,
-        isError: true,
+      id: Date.now(),
+      role: 'bot',
+      text: '죄송합니다, 응답을 가져오는 중 문제가 발생했습니다.',
+      isError: true,
+      retry: true, // 👈 재시도 버튼을 표시하기 위한 플래그
+      originalText: userInput // 👈 다시 전송할 텍스트 저장
     });
   } finally {
     chatStore.isLoading = false;
