@@ -2,38 +2,34 @@
 from flask import Blueprint, request, jsonify
 import google.generativeai as genai
 
-# 'chat_api'라는 이름의 Blueprint 객체 생성
-# url_prefix='/chat'을 설정하면 이 Blueprint의 모든 라우트는 '/api/chat'으로 시작됨
 chat_bp = Blueprint('chat_api', __name__, url_prefix='/api/chat')
 
-# 모델은 여기서 직접 초기화하거나, 앱 컨텍스트에서 가져올 수 있음
-# 여기서는 간단하게 직접 초기화
-# (2025년 기준 최신 모델로 변경하세요)
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-2.0-flash') # 모델 이름을 최신으로 변경하는 것을 권장합니다.
 
-@chat_bp.route('', methods=['POST']) # 이제 경로는 '' 입니다. (prefix가 적용됨)
+@chat_bp.route('', methods=['POST'])
 def handle_chat():
-    
     try:
         data = request.get_json()
         if not data or 'message' not in data or 'history' not in data:
             return jsonify({"error": "잘못된 요청입니다. message와 history 필드가 필요합니다."}), 400
 
         user_message = data['message']
-        chat_session = model.start_chat(history=data['history'])
+        
+        # history가 비어있지 않은 경우에만 history를 사용하여 세션 시작
+        chat_session = model.start_chat(
+            history=data['history'] if data['history'] else []
+        )
+
         response = chat_session.send_message(user_message)
 
-        return jsonify({
-            "reply": response.text,
-            "history": [serialize_history(h) for h in chat_session.history]
-        })
+        # === 변경된 부분 ===
+        # 이제 전체 history 대신 AI의 답변(reply)만 보냅니다.
+        return jsonify({ "reply": response.text })
 
     except Exception as e:
-        print(f"Error: {e}")
+        # 실제 운영 환경에서는 더 구체적인 로깅이 필요합니다.
+        # app.logger.error(f"Chat API Error: {e}", exc_info=True)
+        print(f"Error: {e}") 
         return jsonify({"error": "메시지 처리 중 오류가 발생했습니다."}), 500
 
-def serialize_history(h):
-    return {
-        'role': h.role,
-        'parts': [part.text for part in h.parts]
-    }
+# `serialize_history` 함수는 더 이상 필요 없으므로 삭제해도 됩니다.
