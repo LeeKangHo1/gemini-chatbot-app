@@ -9,7 +9,7 @@ const router = createRouter({
       path: '/',
       name: 'chat',
       component: ChatView
-    }
+    },
     // 여기에 나중에 다른 페이지 라우트를 추가할 수 있습니다.
     // { path: '/about', name: 'about', component: () => import('../views/AboutView.vue') }
   ]

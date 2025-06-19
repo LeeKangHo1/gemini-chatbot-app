@@ -10,12 +10,17 @@ export const useChatStore = defineStore('chat', () => {
   );
   const isLoading = ref(false);
   const error = ref(null);
+  // 사용자가 설정할 수 있는 전송 메시지 개수 (기본값 10)
+  const sendHistoryCount = ref(10)
 
   // 2. watch: messages 상태가 변경될 때마다 localStorage에 자동 저장
   watch(
     messages,
     (newMessages) => {
-      localStorage.setItem('chatMessages', JSON.stringify(newMessages));
+      if (newMessages.length > 100) {
+        // ✅ 최신 100개만 유지
+        newMessages.splice(0, newMessages.length - 100)
+      }
     },
     { deep: true } // 객체 내부의 변화까지 감지
   );
@@ -26,5 +31,6 @@ export const useChatStore = defineStore('chat', () => {
     messages,
     isLoading,
     error,
+    sendHistoryCount,
   };
 });

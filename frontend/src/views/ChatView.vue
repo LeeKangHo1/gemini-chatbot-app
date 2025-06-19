@@ -1,33 +1,35 @@
 <!-- src/views/ChatView.vue -->
 <template>
+
   <div class="chat-wrapper d-flex flex-column">
+    <!-- 타이틀 아래 가운데 정렬된 선택 UI -->
+    <div class="text-center mt-2 mb-2">
+      <label class="me-2">최근 몇 개의 메시지를 보낼까요?</label>
+      <select v-model="sendHistoryCount" class="form-select d-inline-block w-auto">
+        <option v-for="n in [5, 10, 15, 20]" :key="n" :value="n">{{ n }}개</option>
+      </select>
+    </div>
     <transition-group name="message-fade" tag="div" class="message-list flex-grow-1 p-3">
-      <div
-        v-for="message in messages"
-        :key="message.id"
-        class="message-item d-flex mb-4"
-        :class="{ 'user': message.role === 'user', 'bot': message.role === 'bot' }"
-      >
+      <div v-for="message in messages" :key="message.id" class="message-item d-flex mb-4"
+        :class="{ 'user': message.role === 'user', 'bot': message.role === 'bot' }">
         <div class="avatar">
           <span v-if="message.role === 'bot'">🤖</span>
           <span v-else>🧑</span>
         </div>
 
         <div class="message-content">
-          <div
-            class="message-bubble"
-            :class="{
-              'bg-primary-subtle': message.role === 'user',
-              'bg-light': message.role === 'bot',
-              'border': message.role === 'bot',
-              'text-danger border-danger': message.isError
-            }"
-          >
+          <div class="message-bubble" :class="{
+            'bg-primary-subtle': message.role === 'user',
+            'bg-light': message.role === 'bot',
+            'border': message.role === 'bot',
+            'text-danger border-danger': message.isError
+          }">
             <div v-if="message.role === 'bot'" class="markdown-content">
               <div v-if="message.isError">
                 {{ message.text }}
                 <!-- ✅ 재시도 버튼 -->
-                <button v-if="message.retry" class="btn btn-sm btn-outline-danger mt-2" @click="retryMessage(message)">재시도</button>
+                <button v-if="message.retry" class="btn btn-sm btn-outline-danger mt-2"
+                  @click="retryMessage(message)">재시도</button>
               </div>
               <div v-else v-html="renderMarkdown(message.text)"></div>
             </div>
@@ -51,14 +53,8 @@
     <div class="message-input-form p-3 bg-white border-top">
       <form @submit.prevent="handleSendMessage">
         <div class="input-group">
-          <input
-            v-model="userInput"
-            type="text"
-            class="form-control"
-            placeholder="메시지를 입력하세요..."
-            :disabled="isLoading"
-            aria-label="Message input"
-          />
+          <input v-model="userInput" type="text" class="form-control" placeholder="메시지를 입력하세요..." :disabled="isLoading"
+            aria-label="Message input" />
           <button class="btn btn-primary" type="submit" :disabled="isLoading">전송</button>
         </div>
       </form>
@@ -74,10 +70,10 @@ import { marked } from 'marked';
 import { handleSendMessageLogic } from '@/services/chatService.js';
 
 const chatStore = useChatStore();
+const { sendHistoryCount } = storeToRefs(chatStore);
 const { messages, isLoading } = storeToRefs(chatStore);
 
 const userInput = ref('');
-const messageContainer = ref(null);
 const bottomRef = ref(null);
 
 const renderMarkdown = (text) => {

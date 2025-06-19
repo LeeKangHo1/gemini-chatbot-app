@@ -26,13 +26,14 @@ export const handleSendMessageLogic = async (userInput) => {
   try {
     // 히스토리 구성
     const historyPayload = chatStore.messages
-      .filter(msg => !msg.isError && msg.role !== 'bot') 
+      .filter(msg => !msg.isError && msg.role !== 'bot')
       .map((msg) => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.text }],
       }));
 
-    const historyForApi = historyPayload.slice(0, -1);
+    const count = chatStore.sendHistoryCount  // ✅ 사용자가 지정한 개수
+    const historyForApi = historyPayload.slice(-count)
 
     // API 호출
     const response = await sendMessageToBot(userInput, historyForApi);
@@ -43,6 +44,9 @@ export const handleSendMessageLogic = async (userInput) => {
       role: 'bot',
       text: response.reply,
     });
+    // console.log("📤 선택된 전송 메시지 개수:", chatStore.sendHistoryCount)
+    // console.log("📦 실제 전송되는 메시지:", historyForApi)
+
   } catch (error) {
     console.error('❌ API 통신 오류:', error);
     chatStore.messages.push({
