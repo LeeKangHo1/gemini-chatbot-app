@@ -1,59 +1,99 @@
+// src/services/chatService.js
 import { useChatStore } from '@/stores/chatStore';
 import { sendMessageToBot } from '@/services/api';
 
-export const handleSendMessageLogic = async (userInput) => {
+// Base64 문자열을 Blob 객체로 변환하는 헬퍼 함수
+function base64ToBlob(base64, mimeType) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: mimeType });
+}
+
+// File 객체를 순수 Base64 데이터로 변환하는 헬퍼 함수
+const convertFileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+export const handleSendMessageLogic = async (userInput, imageFile) => {
   const chatStore = useChatStore();
 
-  if (!userInput) return;
+  if (!userInput && !imageFile) return;
+
+  const userMessageText = userInput || (imageFile ? "이 이미지에 대해 설명해 줘." : "");
+
+  // ✅ ADD: 스토어에 저장할 이미지 정보 객체를 미리 준비합니다.
+  let imagePayloadForStore = {}; 
+
+  if (imageFile) {
+    // 스토어 저장을 위해 File 객체를 Base64로 변환합니다.
+    const base64Data = await convertFileToBase64(imageFile);
+    imagePayloadForStore = {
+      imageData: base64Data, // 로컬 스토리지 저장 및 복원용
+      imageMimeType: imageFile.type, // 복원 시 MIME 타입 필요
+      imageUrl: URL.createObjectURL(imageFile) // 화면에 즉시 표시하기 위한 임시 URL
+    };
+  }
+
+  // ✅ CHANGE: 사용자 메시지를 화면에 표시할 때 이미지 정보도 함께 추가합니다.
+  chatStore.addMessage({
+    id: Date.now(),
+    role: 'user',
+    text: userMessageText,
+    originalText: userInput,
+    ...imagePayloadForStore // imageData, imageMimeType, imageUrl 속성을 객체에 추가
+  });
 
   chatStore.isLoading = true;
   chatStore.error = null;
 
-  const userMessage = { id: Date.now(), role: 'user', text: userInput };
-  chatStore.messages.push(userMessage);
-
   try {
-    let historyForApi = [];
-
-    // ✅ 세션 ID가 없을 때 (앱 로딩 후 첫 전송)
-    if (!chatStore.sessionId) {
-      console.log("🚀 첫 요청: LocalStorage의 전체 대화 기록을 API로 전송합니다.");
-
-      // Pinia 스토어에 있는 모든 메시지를 API 형식으로 변환
-      const historyPayload = chatStore.messages
-        .filter(msg => !msg.isError) // 에러 메시지는 제외
-        .map(msg => ({
-          role: msg.role === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text }],
-        }));
-
-      // ❗️ 방금 추가한 사용자 메시지(userInput)는 history가 아닌,
-      // API의 메인 `message` 파라미터로 전송되므로 히스토리에서는 제외합니다.
-      // 따라서 payload에서 마지막 요소를 제거합니다.
-      historyForApi = historyPayload.slice(0, -1);
+    // API에 보낼 이미지 정보 객체
+    let imagePayloadForApi = null;
+    if (imageFile) {
+      // API 전송을 위해 Blob 객체를 생성합니다.
+      const imageBlob = base64ToBlob(await convertFileToBase64(imageFile), imageFile.type);
+      imagePayloadForApi = {
+        blob: imageBlob,
+        name: imageFile.name,
+      };
     }
 
-    const response = await sendMessageToBot(userInput, historyForApi, chatStore.sessionId);
+    const historyForApi = chatStore.getHistoryForApi.slice(0, -1);
+    
+    const response = await sendMessageToBot(
+      userInput,
+      historyForApi,
+      chatStore.sessionId,
+      imagePayloadForApi // API에는 Blob이 담긴 객체를 전달
+    );
 
-    if (response.sessionId && !chatStore.sessionId) {
-      chatStore.sessionId = response.sessionId;
-    }
-
-    chatStore.messages.push({
-      id: Date.now(),
+    chatStore.addMessage({
+      id: Date.now() + 1,
       role: 'bot',
       text: response.reply,
     });
+    if (response.sessionId) {
+      chatStore.setSessionId(response.sessionId);
+    }
 
   } catch (error) {
-    console.error('❌ API 통신 오류:', error);
-    chatStore.messages.push({
-      id: Date.now(),
+    console.error('Error sending message:', error);
+    chatStore.addMessage({
+      id: Date.now() + 1,
       role: 'bot',
-      text: '죄송합니다, 응답을 가져오는 중 문제가 발생했습니다.',
+      text: '죄송합니다. 메시지 처리에 실패했습니다.',
       isError: true,
       retry: true,
-      originalText: userInput,
+      originalText: userInput
     });
   } finally {
     chatStore.isLoading = false;

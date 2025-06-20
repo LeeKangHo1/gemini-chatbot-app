@@ -1,14 +1,6 @@
 <!-- src/views/ChatView.vue -->
 <template>
-
   <div class="chat-wrapper d-flex flex-column">
-    <!-- 타이틀 아래 가운데 정렬된 선택 UI -->
-    <!-- <div class="text-center mt-2 mb-2">
-      <label class="me-2">최근 몇 개의 메시지를 보낼까요?</label>
-      <select v-model="sendHistoryCount" class="form-select d-inline-block w-auto">
-        <option v-for="n in [5, 10, 15, 20]" :key="n" :value="n">{{ n }}개</option>
-      </select>
-    </div> -->
     <transition-group name="message-fade" tag="div" class="message-list flex-grow-1 p-3">
       <div v-for="message in messages" :key="message.id" class="message-item d-flex mb-4"
         :class="{ 'user': message.role === 'user', 'bot': message.role === 'bot' }">
@@ -16,7 +8,6 @@
           <span v-if="message.role === 'bot'">🤖</span>
           <span v-else>🧑</span>
         </div>
-
         <div class="message-content">
           <div class="message-bubble" :class="{
             'bg-primary-subtle': message.role === 'user',
@@ -24,20 +15,32 @@
             'border': message.role === 'bot',
             'text-danger border-danger': message.isError
           }">
+            
+            <!-- ✅ START: 이 부분이 핵심 수정 사항입니다. -->
+            <!-- 1. 봇 메시지일 경우 -->
             <div v-if="message.role === 'bot'" class="markdown-content">
               <div v-if="message.isError">
                 {{ message.text }}
-                <!-- ✅ 재시도 버튼 -->
-                <button v-if="message.retry" class="btn btn-sm btn-outline-danger mt-2"
-                  @click="retryMessage(message)">재시도</button>
+                <button v-if="message.retry" class="btn btn-sm btn-outline-danger mt-2" @click="retryMessage(message)">재시도</button>
               </div>
               <div v-else v-html="renderMarkdown(message.text)"></div>
             </div>
-            <p v-else class="m-0">{{ message.text }}</p>
+
+            <!-- 2. 사용자 메시지일 경우 -->
+            <div v-else>
+              <!-- 2-1. 이미지가 포함된 사용자 메시지 -->
+              <div v-if="message.imageUrl" class="user-message-with-image">
+                <img :src="message.imageUrl" alt="User uploaded image" class="attached-image-thumbnail mb-2">
+                <p v-if="message.text" class="m-0">{{ message.text }}</p>
+              </div>
+              <!-- 2-2. 텍스트만 있는 사용자 메시지 -->
+              <p v-else class="m-0">{{ message.text }}</p>
+            </div>
+            <!-- ✅ END: 수정 끝. -->
+
           </div>
         </div>
       </div>
-
       <div v-if="isLoading" key="loading" class="message-item d-flex mb-4 bot">
         <div class="avatar"><span>🤖</span></div>
         <div class="message-content">
@@ -46,13 +49,21 @@
           </div>
         </div>
       </div>
-
       <div ref="bottomRef" :key="'bottom-ref'"></div>
     </transition-group>
+
+    <div v-if="selectedImage" class="image-preview-wrapper p-3 border-top">
+      <div class="image-preview-container">
+        <img :src="imagePreviewUrl" alt="Image preview" class="img-thumbnail" />
+        <button class="btn-close" @click="removeImage" aria-label="Remove image"></button>
+      </div>
+    </div>
 
     <div class="message-input-form p-3 bg-white border-top">
       <form @submit.prevent="handleSendMessage">
         <div class="input-group">
+          <input ref="fileInput" type="file" @change="handleFileChange" accept="image/*" style="display: none;" />
+          <button class="btn btn-outline-secondary" type="button" @click="triggerFileInput" :disabled="isLoading">📎</button>
           <input v-model="userInput" type="text" class="form-control" placeholder="메시지를 입력하세요..." :disabled="isLoading"
             aria-label="Message input" />
           <button class="btn btn-primary" type="submit" :disabled="isLoading">전송</button>
@@ -63,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted } from 'vue';
+import { ref, watch, nextTick, onMounted, computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useChatStore } from '@/stores/chatStore';
 import { marked } from 'marked';
@@ -71,213 +82,110 @@ import DOMPurify from 'dompurify';
 import { handleSendMessageLogic } from '@/services/chatService.js';
 
 const chatStore = useChatStore();
-// ❗️ sendHistoryCount 관련 코드는 모두 제거합니다.
 const { messages, isLoading } = storeToRefs(chatStore);
-
 const userInput = ref('');
 const bottomRef = ref(null);
+const fileInput = ref(null);
+const selectedImage = ref(null);
+
+const imagePreviewUrl = computed(() => {
+  return selectedImage.value ? URL.createObjectURL(selectedImage.value) : '';
+});
 
 const renderMarkdown = (text) => {
   if (!text) return '';
-  return marked.parse(text, { breaks: true, gfm: true });
+  const rawHtml = marked.parse(text, { breaks: true, gfm: true });
+  return DOMPurify.sanitize(rawHtml);
 };
 
 watch(messages, async () => {
-  // console.log('🔽 스크롤 시도됨');
   await nextTick();
   if (bottomRef.value) {
     bottomRef.value.scrollIntoView({ behavior: 'smooth' });
-    // console.log('✅ scrollIntoView 호출됨');
-  } else {
-    console.warn('❌ bottomRef 없음');
   }
 }, { deep: true });
 
 onMounted(async () => {
-   // ✅ 1. 컴포넌트가 마운트되면 스토어의 자동 저장 기능을 활성화합니다.
   chatStore.subscribeToChanges();
-  
   await nextTick();
   if (bottomRef.value) {
     bottomRef.value.scrollIntoView({ behavior: 'auto' });
-    // console.log('✅ onMounted: 초기 scrollIntoView 실행됨');
   }
 });
 
-// ✅ 재시도 버튼 클릭 시 호출
+const triggerFileInput = () => {
+  fileInput.value.click();
+};
+
+const handleFileChange = (event) => {
+  const file = event.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    selectedImage.value = file;
+  }
+};
+
+const removeImage = () => {
+  selectedImage.value = null;
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+};
+
 const retryMessage = async (message) => {
-  await handleSendMessageLogic(message.originalText);
+  await handleSendMessageLogic(message.originalText, null);
 };
 
 const handleSendMessage = async () => {
   const message = userInput.value.trim();
-  if (!message) return;
+  if (!message && !selectedImage.value) return;
+  const imageFile = selectedImage.value;
   userInput.value = '';
-  await handleSendMessageLogic(message);
+  removeImage();
+  await handleSendMessageLogic(message, imageFile);
 };
 </script>
 
 <style lang="scss" scoped>
-.chat-wrapper {
-  height: calc(100vh - 12rem);
-  max-height: 700px;
-  max-width: 800px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background-color: #ffffff;
-  border: 1px solid #e0e5eb;
-  border-radius: 0.75rem;
-  box-shadow: 0 10px 30px -5px rgba(18, 22, 33, 0.15);
+/* ✅ ADD: 사용자 메시지 버블 안의 이미지 썸네일 스타일 */
+.user-message-with-image .attached-image-thumbnail {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  border: 1px solid #dee2e6;
 }
 
-.message-list {
-  background-color: #f0f4f8;
-  padding: 1.5rem !important;
-  overflow-y: auto;
-  flex-grow: 1;
-}
+/* 전송 전 이미지 미리보기 */
+.image-preview-wrapper { background-color: #f8f9fa; }
+.image-preview-container { position: relative; display: inline-block; max-width: 150px; }
+.image-preview-container .img-thumbnail { max-width: 100%; height: auto; }
+.image-preview-container .btn-close { position: absolute; top: -10px; right: -10px; background-color: white; border-radius: 50%; padding: 0.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 
-.message-item {
-  display: flex;
-  align-items: flex-end;
-  margin-bottom: 1.5rem;
-
-  &.user {
-    flex-direction: row-reverse;
-  }
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.message-item.bot .avatar {
-  background-color: #6c757d;
-  margin-right: 1rem;
-}
-
-.message-item.user .avatar {
-  background-color: #0d6efd;
-  margin-left: 1rem;
-}
-
-.message-content {
-  max-width: 80%;
-}
-
-.message-bubble {
-  padding: 0.75rem 1rem;
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  p {
-    white-space: pre-wrap;
-    word-break: break-word;
-    margin: 0;
-  }
-
-  .user & {
-    border-top-right-radius: 0.25rem;
-    background-color: #d1e7ff;
-    color: #002b5c;
-  }
-
-  .bot & {
-    border-top-left-radius: 0.25rem;
-    background-color: #ffffff;
-  }
-}
-
-.markdown-content {
-  :first-child {
-    margin-top: 0;
-  }
-
-  :last-child {
-    margin-bottom: 0;
-  }
-
-  p {
-    margin-bottom: 0.5rem;
-  }
-
-  pre {
-    background-color: #282c34;
-    color: #abb2bf;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-
-  code {
-    font-family: 'Courier New', Courier, monospace;
-  }
-
-  ul,
-  ol {
-    padding-left: 1.5rem;
-  }
-}
-
-.message-input-form {
-  background-color: #ffffff;
-  border-top: 1px solid #e0e5eb;
-  padding: 1rem;
-}
-
-.message-fade-enter-active {
-  transition: all 0.3s ease-out;
-}
-
-.message-fade-leave-active {
-  transition: all 0.2s ease-in;
-}
-
-.message-fade-enter-from,
-.message-fade-leave-to {
-  opacity: 0;
-  transform: translateY(20px);
-}
-
-.typing-indicator span {
-  height: 8px;
-  width: 8px;
-  background-color: #9E9EA1;
-  border-radius: 50%;
-  display: inline-block;
-  animation: wave 1.3s infinite;
-  margin: 0 2px;
-
-  &:nth-of-type(2) {
-    animation-delay: 0.2s;
-  }
-
-  &:nth-of-type(3) {
-    animation-delay: 0.4s;
-  }
-}
-
-@keyframes wave {
-
-  0%,
-  60%,
-  100% {
-    transform: initial;
-  }
-
-  30% {
-    transform: translateY(-8px);
-  }
-}
+/* 기존 스타일 */
+.chat-wrapper { height: calc(100vh - 12rem); max-height: 700px; max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; background-color: #ffffff; border: 1px solid #e0e5eb; border-radius: 0.75rem; box-shadow: 0 10px 30px -5px rgba(18, 22, 33, 0.15); }
+.message-list { background-color: #f0f4f8; padding: 1.5rem !important; overflow-y: auto; flex-grow: 1; }
+.message-item { display: flex; align-items: flex-end; margin-bottom: 1.5rem; }
+.message-item.user { flex-direction: row-reverse; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; color: white; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; flex-shrink: 0; }
+.message-item.bot .avatar { background-color: #6c757d; margin-right: 1rem; }
+.message-item.user .avatar { background-color: #0d6efd; margin-left: 1rem; }
+.message-content { max-width: 80%; }
+.message-bubble { padding: 0.75rem 1rem; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); }
+.message-bubble p { white-space: pre-wrap; word-break: break-word; margin: 0; }
+.user .message-bubble { border-top-right-radius: 0.25rem; background-color: #d1e7ff; color: #002b5c; }
+.bot .message-bubble { border-top-left-radius: 0.25rem; background-color: #ffffff; }
+.markdown-content :first-child { margin-top: 0; }
+.markdown-content :last-child { margin-bottom: 0; }
+.markdown-content p { margin-bottom: 0.5rem; }
+.markdown-content pre { background-color: #282c34; color: #abb2bf; padding: 1rem; border-radius: 0.5rem; white-space: pre-wrap; word-break: break-all; }
+.markdown-content code { font-family: 'Courier New', Courier, monospace; }
+.markdown-content ul, .markdown-content ol { padding-left: 1.5rem; }
+.message-input-form { background-color: #ffffff; border-top: 1px solid #e0e5eb; padding: 1rem; }
+.message-fade-enter-active { transition: all 0.3s ease-out; }
+.message-fade-leave-active { transition: all 0.2s ease-in; }
+.message-fade-enter-from, .message-fade-leave-to { opacity: 0; transform: translateY(20px); }
+.typing-indicator span { height: 8px; width: 8px; background-color: #9E9EA1; border-radius: 50%; display: inline-block; animation: wave 1.3s infinite; margin: 0 2px; }
+.typing-indicator span:nth-of-type(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-of-type(3) { animation-delay: 0.4s; }
+@keyframes wave { 0%, 60%, 100% { transform: initial; } 30% { transform: translateY(-8px); } }
 </style>
