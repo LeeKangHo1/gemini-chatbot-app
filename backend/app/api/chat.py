@@ -20,6 +20,7 @@ chat_sessions = {}
 @chat_bp.route('', methods=['POST'])
 def handle_chat():
     try:
+
         # 📌 4. 프론트엔드에서 FormData로 보낸 데이터를 받습니다.
         # request.form에는 텍스트 데이터가, request.files에는 파일 데이터가 담겨옵니다.
         form_data = request.form

@@ -12,23 +12,26 @@ def create_app():
     app = Flask(__name__)
     load_dotenv()
 
-    # --- 로깅 설정 (기존과 동일) ---
-    if not app.debug:
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-        file_handler = RotatingFileHandler(
-            'logs/chatbot_app.log', 
-            maxBytes=1024 * 1024 * 5, 
-            backupCount=5
-        )
-        log_formatter = logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        )
-        file_handler.setFormatter(log_formatter)
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-        app.logger.setLevel(logging.INFO)
-        app.logger.info('Chatbot App startup')
+    # --- 로깅 설정 ---
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+
+    file_handler = RotatingFileHandler(
+        'logs/chatbot_app.log',
+        maxBytes=1024 * 1024 * 5,
+        backupCount=5,
+        encoding='utf-8'  # ✅ 로그 한글 깨짐 방지
+    )
+
+    log_formatter = logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+    file_handler.setFormatter(log_formatter)
+    file_handler.setLevel(logging.INFO)
+
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Chatbot App startup')
     # --- 로깅 설정 끝 ---
 
     # Gemini API 및 CORS 설정
