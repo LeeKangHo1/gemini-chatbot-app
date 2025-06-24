@@ -85,7 +85,13 @@ const formattedTime = computed(() => {
 }
 
 .message-item.user {
-  flex-direction: row-reverse;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+
+.message-item.bot {
+  flex-direction: row;
+  justify-content: flex-start;
 }
 
 .avatar {
@@ -102,21 +108,34 @@ const formattedTime = computed(() => {
 
 .message-item.bot .avatar {
   background-color: #6c757d;
-  margin-right: 1rem;
+  margin-right: 0.75rem;
+  order: 0;
 }
 
 .message-item.user .avatar {
   background-color: #0d6efd;
-  margin-left: 1rem;
+  margin-left: 0.75rem;
+  order: 2; /* 아바타를 오른쪽으로 이동 */
+}
+
+.message-item.user .message-content {
+  order: 1;
+  margin-left: auto;
 }
 
 .message-content {
   max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .message-bubble {
+  display: inline-block;
+  word-break: break-word;
   padding: 0.75rem 1rem;
   border-radius: 1rem;
+  max-width: 100%;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -129,8 +148,18 @@ const formattedTime = computed(() => {
 .bot .message-bubble {
   border-top-left-radius: 0.25rem;
   background-color: #ffffff;
+  margin-right: auto; 
 }
 
+.message-content small {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  text-align: right;
+  color: #6c757d;
+}
+
+/* 마크다운 콘텐츠 */
 .markdown-content :first-child {
   margin-top: 0;
 }
@@ -149,7 +178,7 @@ const formattedTime = computed(() => {
   padding: 1rem;
   border-radius: 0.5rem;
   white-space: pre-wrap;
-  word-break: break-all;
+  word-break: break-word;
 }
 
 .markdown-content code {
@@ -161,6 +190,7 @@ const formattedTime = computed(() => {
   padding-left: 1.5rem;
 }
 
+/* 이미지 첨부 */
 .user-message-with-image .attached-image-thumbnail {
   max-width: 200px;
   max-height: 200px;
@@ -168,4 +198,5 @@ const formattedTime = computed(() => {
   cursor: pointer;
   border: 1px solid #dee2e6;
 }
+
 </style>

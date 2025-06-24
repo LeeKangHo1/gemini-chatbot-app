@@ -1,12 +1,10 @@
-// src/stores/chatStore.js
 import { defineStore } from 'pinia';
 
 // localStorage에 저장할 때 사용할 키
 const CHAT_HISTORY_KEY = 'gemini-chat-history';
 const SESSION_ID_KEY = 'gemini-session-id';
 
-// ✅ ADD: Base64 데이터를 다시 Blob URL로 만드는 헬퍼 함수
-// 페이지를 새로고침했을 때, 저장된 이미지 데이터를 다시 보여주기 위함입니다.
+// ✅ Base64 → Blob URL (이미지 복원용)
 function base64ToBlobUrl(base64, mimeType) {
   try {
     const byteCharacters = atob(base64);
@@ -25,15 +23,13 @@ function base64ToBlobUrl(base64, mimeType) {
 
 export const useChatStore = defineStore('chat', {
   state: () => {
-    // 📌 로컬 스토리지에서 데이터 불러오기
     const savedMessages = localStorage.getItem(CHAT_HISTORY_KEY);
     const savedSessionId = localStorage.getItem(SESSION_ID_KEY);
 
-    // ✅ CHANGE: 로컬 스토리지의 메시지를 파싱할 때, 이미지 URL을 되살립니다.
     let messages = [];
     if (savedMessages) {
       messages = JSON.parse(savedMessages).map(msg => {
-        // 메시지에 이미지 데이터(base64)가 있으면, Blob URL로 변환합니다.
+        // 복원 시: base64 → blob → URL
         if (msg.imageData) {
           msg.imageUrl = base64ToBlobUrl(msg.imageData, msg.imageMimeType);
         }
@@ -42,14 +38,14 @@ export const useChatStore = defineStore('chat', {
     }
 
     return {
-      messages: messages, // ✅ 수정된 messages 배열 사용
+      messages: messages,
       sessionId: savedSessionId || null,
       isLoading: false,
       error: null,
       isSubscribed: false,
     };
   },
-  
+
   getters: {
     getHistoryForApi: (state) => {
       return state.messages
@@ -64,8 +60,8 @@ export const useChatStore = defineStore('chat', {
   actions: {
     addMessage(message) {
       const msgWithMeta = {
-        id: Date.now(), // ⬅️ 자동 생성
-        timestamp: new Date().toISOString(), // ⬅️ 자동 생성
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
         ...message
       };
       this.messages.push(msgWithMeta);
@@ -74,29 +70,50 @@ export const useChatStore = defineStore('chat', {
     setSessionId(sessionId) {
       this.sessionId = sessionId;
     },
-    
-    // ✅ CHANGE: 구독 로직 수정
+
     subscribeToChanges() {
-      if (this.isSubscribed) return;
+  if (this.isSubscribed) return;
 
-      this.$subscribe((mutation, state) => {
-        // ✅ localStorage에 저장하기 전에, Blob URL을 제거합니다.
-        // Blob URL은 임시 객체이므로 저장할 수 없습니다.
-        const messagesToSave = state.messages.map(msg => {
-          const { imageUrl, ...rest } = msg; // imageUrl을 제외한 나머지 속성만 복사
-          return rest;
-        });
-        
-        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messagesToSave));
+  this.$subscribe((mutation, state) => {
+    const MAX_TOTAL_MESSAGES = 50;
+    const MAX_IMAGE_MESSAGES = 10;
 
-        if (state.sessionId) {
-          localStorage.setItem(SESSION_ID_KEY, state.sessionId);
-        } else {
-          localStorage.removeItem(SESSION_ID_KEY);
+    let imageCount = 0;
+
+    const messagesToSave = state.messages
+      .slice(-MAX_TOTAL_MESSAGES)
+      .map(msg => {
+        const { imageUrl, ...rest } = msg;
+
+        // 이미지 base64는 최대 10개까지만 저장
+        if (rest.imageData) {
+          if (imageCount >= MAX_IMAGE_MESSAGES) {
+            delete rest.imageData;
+            delete rest.imageMimeType;
+          } else {
+            imageCount++;
+          }
         }
+
+        return rest;
       });
-      this.isSubscribed = true;
-    },
+
+    try {
+      localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(messagesToSave));
+    } catch (e) {
+      console.warn('💥 localStorage 저장 실패 (용량 초과 가능)', e);
+    }
+
+    if (state.sessionId) {
+      localStorage.setItem(SESSION_ID_KEY, state.sessionId);
+    } else {
+      localStorage.removeItem(SESSION_ID_KEY);
+    }
+  });
+
+  this.isSubscribed = true;
+}
+,
 
     clearChatHistory() {
       this.messages = [];
