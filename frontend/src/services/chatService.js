@@ -1,7 +1,8 @@
-import { useChatStore } from '@/stores/chatStore';
-import { sendMessageToBot } from '@/services/api';
+// src/services/chatService.js
+import { useChatStore } from '../stores/chatStore';
+import { sendMessageToBot } from './api';
 
-// ✅ Base64 변환
+// 파일을 base64로 인코딩
 const convertFileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -11,7 +12,7 @@ const convertFileToBase64 = (file) => {
   });
 };
 
-// ✅ 이미지 → store용 payload
+// 이미지 store에 표시할 데이터 준비
 const prepareImagePayloadForStore = async (file) => {
   const base64Data = await convertFileToBase64(file);
   return {
@@ -21,65 +22,68 @@ const prepareImagePayloadForStore = async (file) => {
   };
 };
 
-// ✅ 이미지 → API용 payload (Blob)
+// 이미지 API에 전송할 Blob 데이터 준비
 const prepareImagePayloadForApi = async (file) => {
   const base64Data = await convertFileToBase64(file);
   const byteCharacters = atob(base64Data);
   const byteArray = new Uint8Array([...byteCharacters].map(c => c.charCodeAt(0)));
-  const blob = new Blob([byteArray], { type: file.type });
 
   return {
-    blob,
+    blob: new Blob([byteArray], { type: file.type }),
     name: file.name,
   };
 };
 
-// ✅ 사용자 메시지 추가
-const sendUserMessage = (chatStore, userInput, imagePayload) => {
+// 사용자 메시지를 store에 추가
+const sendUserMessage = (chatStore, userInput, imagePayload, attachmentName) => {
   chatStore.addMessage({
     role: 'user',
     text: userInput || (imagePayload ? "이 이미지에 대해 설명해 줘." : ""),
     originalText: userInput,
-    ...imagePayload
+    ...imagePayload,
+    ...(attachmentName && { attachmentName })
   });
 };
 
-// ✅ 봇 응답 처리
-const sendBotResponse = async (chatStore, userInput, history, sessionId, imagePayload) => {
-  const response = await sendMessageToBot(userInput, history, sessionId, imagePayload);
-  chatStore.addMessage({
-    role: 'bot',
-    text: response.reply
-  });
+// Gemini API로부터 응답을 받아 store에 추가
+const sendBotResponse = async (chatStore, formData) => {
+  const response = await sendMessageToBot(formData);
+  chatStore.addMessage({ role: 'bot', text: response.reply });
+
   if (response.sessionId) {
     chatStore.setSessionId(response.sessionId);
   }
 };
 
-// ✅ 통합 처리 로직 (컴포넌트에서 호출할 메인 함수)
-export const handleSendMessageLogic = async (userInput, imageFile) => {
+// 메시지 전송 로직의 핵심 처리 함수
+export const handleSendMessageLogic = async (formData) => {
   const chatStore = useChatStore();
 
-  if (!userInput && !imageFile) return;
+  const userInput = formData.get('message')?.trim();
+  const imageFile = formData.get('imageFile');
+  const attachmentFile = formData.get('attachment');
+
+  if (!userInput && !imageFile && !attachmentFile) return;
 
   chatStore.isLoading = true;
   chatStore.error = null;
 
   try {
     const imagePayloadForStore = imageFile ? await prepareImagePayloadForStore(imageFile) : null;
-    const imagePayloadForApi = imageFile ? await prepareImagePayloadForApi(imageFile) : null;
+    const attachmentName = attachmentFile?.name || null;
 
-    sendUserMessage(chatStore, userInput, imagePayloadForStore);
+    sendUserMessage(chatStore, userInput, imagePayloadForStore, attachmentName);
 
+    // 마지막 메시지는 제외한 대화 기록 전송
     const historyForApi = chatStore.getHistoryForApi.slice(0, -1);
+    formData.append('history', JSON.stringify(historyForApi));
 
-    await sendBotResponse(chatStore, userInput, historyForApi, chatStore.sessionId, imagePayloadForApi);
-
+    await sendBotResponse(chatStore, formData);
   } catch (error) {
     console.error('Error sending message:', error);
     chatStore.addMessage({
       role: 'bot',
-      text: '죄송합니다. 메시지 처리에 실패했습니다.',
+      text: '❌ 메시지 처리 중 오류가 발생했습니다.',
       isError: true,
       retry: true,
       originalText: userInput
