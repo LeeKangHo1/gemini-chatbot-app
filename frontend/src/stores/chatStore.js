@@ -63,7 +63,11 @@ export const useChatStore = defineStore('chat', {
 
   actions: {
     addMessage(message) {
-      this.messages.push(message);
+      const msgWithTimestamp = {
+        ...message,
+        timestamp: message.timestamp || new Date().toISOString()
+      };
+      this.messages.push(msgWithTimestamp);
     },
 
     setSessionId(sessionId) {

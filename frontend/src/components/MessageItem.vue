@@ -27,8 +27,12 @@
           </div>
           <p v-else class="m-0">{{ message.text }}</p>
         </div>
-
       </div>
+
+      <!-- 🕒 메시지 시간 -->
+      <small class="text-muted d-block mt-1 text-end">
+        {{ formattedTime }}
+      </small>
     </div>
   </div>
 </template>
@@ -58,6 +62,19 @@ const renderMarkdown = (text) => {
   const rawHtml = marked.parse(text, { breaks: true, gfm: true })
   return DOMPurify.sanitize(rawHtml)
 }
+
+const formattedTime = computed(() => {
+  if (!props.message.timestamp) return ''
+  const date = new Date(props.message.timestamp)
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+})
 </script>
 
 <style scoped>
