@@ -63,11 +63,12 @@ export const useChatStore = defineStore('chat', {
 
   actions: {
     addMessage(message) {
-      const msgWithTimestamp = {
-        ...message,
-        timestamp: message.timestamp || new Date().toISOString()
+      const msgWithMeta = {
+        id: Date.now(), // ⬅️ 자동 생성
+        timestamp: new Date().toISOString(), // ⬅️ 자동 생성
+        ...message
       };
-      this.messages.push(msgWithTimestamp);
+      this.messages.push(msgWithMeta);
     },
 
     setSessionId(sessionId) {
