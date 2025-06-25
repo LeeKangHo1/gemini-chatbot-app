@@ -42,7 +42,11 @@ onMounted(() => {
 })
 
 const handleRetry = async (message) => {
-  await handleSendMessageLogic(message.originalText, null)
+  const formData = new FormData()
+  formData.append('message', message.originalText || '')
+
+  // 필요 시 이미지, 첨부파일 정보도 복원해야 함
+  await handleSendMessageLogic(formData)
 }
 </script>
 

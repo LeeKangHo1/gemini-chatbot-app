@@ -1,3 +1,5 @@
+<!-- src/views/ChatView.vue -->
+
 <template>
   <div class="chat-wrapper d-flex flex-column">
     <!-- 메시지 목록 -->

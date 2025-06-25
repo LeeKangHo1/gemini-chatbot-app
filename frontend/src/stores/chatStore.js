@@ -1,3 +1,5 @@
+// src/stores/chatStore.js
+
 import { defineStore } from 'pinia';
 
 // localStorage에 저장할 때 사용할 키
