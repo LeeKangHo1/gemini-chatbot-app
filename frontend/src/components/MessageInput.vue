@@ -5,16 +5,7 @@
       <!-- ✅ 첨부 파일 이름 미리보기 (입력창 위에 표시) -->
       <div v-if="selectedAttachment" class="mb-2 small text-muted">
         첨부된 파일: {{ selectedAttachment.name }}
-        <span v-if="!localInput"> - {{ selectedAttachment.name }} 파일 분석해줘.</span>
         <button type="button" class="btn btn-sm btn-outline-danger ms-2" @click="clearAttachment">❌</button>
-      </div>
-
-      <div v-if="showAttachmentRetryNotice" class="alert alert-warning py-1 px-2 mb-2 small" role="alert">
-        📎 이전 파일 첨부는 복원되지 않습니다. 다시 첨부해 주세요.
-      </div>
-
-      <div v-if="showImageRetryNotice" class="alert alert-warning py-1 px-2 mb-2 small" role="alert">
-        🖼️ 이전 이미지 첨부는 복원되지 않습니다. 다시 첨부해 주세요.
       </div>
 
       <div class="input-group">
@@ -56,8 +47,6 @@ const localInput = ref(props.input);
 const fileInput = ref(null);
 const attachmentInput = ref(null);
 const selectedAttachment = ref(null);
-const showAttachmentRetryNotice = ref(false);
-const showImageRetryNotice = ref(false);
 
 // props 변경 → localInput 동기화
 watch(() => props.input, (val) => {
@@ -81,7 +70,6 @@ const triggerAttachmentInput = () => {
 
 // 이미지 선택 처리
 const handleFileChange = (event) => {
-  showImageRetryNotice.value = false;
   const file = event.target.files[0];
   if (file && file.type.startsWith('image/')) {
     emit('file-selected', file);
@@ -90,7 +78,6 @@ const handleFileChange = (event) => {
 
 // 첨부파일 선택 처리
 const handleAttachmentChange = (event) => {
-  showAttachmentRetryNotice.value = false;
   const file = event.target.files[0];
   if (file) {
     selectedAttachment.value = file;
@@ -107,13 +94,13 @@ const clearAttachment = () => {
 const handleSend = () => {
   const formData = new FormData();
 
-  // 채팅창에만 표시될 기본 메시지 생성
-  const isFileOnly = !localInput.value && selectedAttachment.value;
-  const displayOnlyMessage = isFileOnly
-    ? `${selectedAttachment.value.name} 파일 분석해줘`
-    : localInput.value;
+  // 메시지 입력이 없고 첨부파일만 있는 경우 기본 메시지 삽입
+  if (!localInput.value && selectedAttachment.value) {
+    const fileName = selectedAttachment.value.name;
+    localInput.value = `${fileName} 파일 분석해줘`;
+  }
 
-  formData.append('message', localInput.value); // 백엔드에는 비어 있으면 빈 채로 전송
+  formData.append('message', localInput.value);
 
   if (selectedAttachment.value) {
     formData.append('attachment', selectedAttachment.value);
@@ -121,13 +108,8 @@ const handleSend = () => {
 
   emit('send', formData);
 
-  // 채팅 UI에는 분석 요청 문구 보여주되 백엔드에는 영향 없음
-  localInput.value = isFileOnly ? displayOnlyMessage : '';
+  localInput.value = '';
   selectedAttachment.value = null;
-
-  // 재시도 후 안내 메시지 다시 보이도록 (사용자 안내 목적)
-  showAttachmentRetryNotice.value = true;
-  showImageRetryNotice.value = true;
 };
 </script>
 
