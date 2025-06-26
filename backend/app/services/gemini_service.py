@@ -1,4 +1,4 @@
-# app/services/gemini_service.py
+# 📄 파일 경로: app/services/gemini_service.py
 
 import uuid
 import base64
@@ -16,33 +16,34 @@ def setup_gemini(api_key):
     genai.configure(api_key=api_key)
     return genai.GenerativeModel("gemini-1.5-flash-latest")
 
-# 프롬프트 구성 함수
-def build_prompt(user_message, image_file, attachment_text=""):
+# 프롬프트 구성 함수 (여러 이미지 지원)
+def build_prompt(user_message, image_files, attachment_text=""):
     """
-    사용자 입력과 이미지, 첨부파일 텍스트를 기반으로 Gemini에 보낼 프롬프트를 구성
+    사용자 입력과 여러 이미지, 첨부파일 텍스트를 기반으로 Gemini에 보낼 프롬프트를 구성
     """
     prompt_parts = []
 
+    # 첨부 텍스트 파일 내용 먼저 추가
     if attachment_text:
         prompt_parts.append(f"첨부된 문서 내용:\n{attachment_text}")
 
-    if user_message:
+    # 메시지 또는 기본 메시지 추가
+    if not user_message and image_files:
+        prompt_parts.append("이 이미지들에 대해 설명해 주세요.")
+    elif user_message:
         prompt_parts.append(user_message)
 
-    if image_file:
+    # 여러 이미지 base64로 인코딩 후 추가
+    for image_file in image_files:
         try:
-            # 이미지 파일을 base64로 인코딩하여 포함
             image_data = base64.b64encode(image_file.read()).decode('utf-8')
             mime_type = image_file.mimetype
             prompt_parts.append({
                 "mime_type": mime_type,
                 "data": image_data
             })
-            # 이미지만 있고 메시지가 없을 경우 기본 메시지 추가
-            if not user_message:
-                prompt_parts.insert(0, "이 이미지에 대해 설명해 주세요.")
         except Exception:
-            pass  # 에러는 로거에서 처리
+            continue  # 하나 실패해도 나머지는 계속
 
     return prompt_parts
 

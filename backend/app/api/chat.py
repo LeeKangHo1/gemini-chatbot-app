@@ -27,7 +27,12 @@ def handle_chat():
         file_data = request.files
 
         user_message = form_data.get("message", "")
-        image_file = file_data.get("imageFile")
+        image_files = request.files.getlist("imageFiles")  # ✅ 이미지 리스트로 받기
+
+        # ✅ 첨부 이미지 최대 3개 제한
+        if len(image_files) > 3:
+            return jsonify({"error": "이미지는 최대 3개까지만 업로드할 수 있습니다."}), 400
+
         attachment_file = file_data.get("attachment")
         session_id = form_data.get("sessionId")
         history_str = form_data.get("history", "[]")
@@ -52,7 +57,7 @@ def handle_chat():
                 ])
 
         # 프롬프트 구성 (텍스트, 이미지, 첨부파일 내용 포함)
-        prompt_parts = build_prompt(user_message, image_file, attachment_text)
+        prompt_parts = build_prompt(user_message, image_files, attachment_text)
 
         if not prompt_parts:
             return jsonify({"error": "미제, 이미지 또는 파일이 필요합니다."}), 400
