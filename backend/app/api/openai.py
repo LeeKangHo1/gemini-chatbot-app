@@ -2,7 +2,7 @@
 
 from flask import Blueprint, request, jsonify, current_app
 from app.config import Config
-from app.services.openai_service import setup_openai, build_openai_prompt, send_openai_prompt
+from app.services.openai_service import build_openai_prompt, send_openai_prompt
 from PyPDF2 import PdfReader
 from io import BytesIO
 import json
@@ -22,6 +22,9 @@ def handle_openai():
         message = form_data.get("message", "")
         history_str = form_data.get("history", "[]")
         attachment_file = file_data.get("attachment")
+        # 이미지 파일 리스트 받기 추가
+        image_files = file_data.getlist("imageFiles")  # ✅ 빠졌던 부분 추가
+
 
         # 첨부파일 처리 (텍스트 or PDF)
         attachment_text = ""
@@ -41,7 +44,7 @@ def handle_openai():
                 ])
 
         # 프롬프트 생성
-        messages = build_openai_prompt(message, attachment_text, history_str)
+        messages = build_openai_prompt(message, attachment_text, image_files, history_str)
 
         # 응답 생성
         reply = send_openai_prompt(messages)
