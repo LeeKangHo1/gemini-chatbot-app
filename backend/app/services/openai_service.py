@@ -11,7 +11,7 @@ def send_openai_prompt(messages):
     """OpenAI 모델에 프롬프트 전송 후 응답 반환"""
     client = get_client()
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=Config.OPENAI_MODEL_NAME,
         messages=messages,
         temperature=0.7
     )

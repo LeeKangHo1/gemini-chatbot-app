@@ -4,11 +4,8 @@ from flask import Blueprint, request, jsonify, current_app
 from app.prompts.gemini_prompt import build_prompt
 from app.services.gemini_service import get_or_create_session, send_prompt
 from app.utils.file_utils import extract_text_from_file
-from app.config import Config
-import google.generativeai as genai
 
 gemini_bp = Blueprint("gemini_api", __name__, url_prefix="/api/gemini")
-model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
 @gemini_bp.route('', methods=['POST'])
 def handle_chat():
@@ -28,7 +25,9 @@ def handle_chat():
 
         attachment_text = extract_text_from_file(attachment_file)
         prompt_parts = build_prompt(user_message, image_files, attachment_text)
-        session, session_id = get_or_create_session(model, session_id, history_str)
+
+        # 모델은 service 안에서 config로부터 생성됨
+        session, session_id = get_or_create_session(session_id, history_str)
         reply = send_prompt(session, prompt_parts)
 
         return jsonify({ "reply": reply, "sessionId": session_id })
