@@ -24,7 +24,9 @@ def create_app():
     setup_logger(app)
 
     # ✅ 블루프린트 등록
-    from .api.chat import chat_bp
-    app.register_blueprint(chat_bp)
+    from .api.gemini import gemini_bp
+    app.register_blueprint(gemini_bp)
+    from .api.openai import openai_bp
+    app.register_blueprint(openai_bp) 
 
     return app

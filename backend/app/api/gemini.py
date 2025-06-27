@@ -1,3 +1,5 @@
+# 📄 파일 경로: app/api/gemini.py
+
 from flask import Blueprint, request, jsonify, current_app
 from app.config import Config
 from app.services.gemini_service import (
@@ -10,12 +12,12 @@ from PyPDF2 import PdfReader
 from io import BytesIO
 
 # Flask Blueprint 생성 (URL prefix: /api/chat)
-chat_bp = Blueprint("chat_api", __name__, url_prefix="/api/chat")
+gemini_bp = Blueprint("gemini_api", __name__, url_prefix="/api/chat")
 
 # Gemini 모델 초기화
 model = setup_gemini(Config.GOOGLE_API_KEY)
 
-@chat_bp.route('', methods=['POST'])
+@gemini_bp.route('', methods=['POST'])
 def handle_chat():
     """
     클라이언트로부터 전송된 메시지, 이미지, 첨부파일, 세션ID, 대화기록을 바탕으로

@@ -45,7 +45,7 @@ export const useChatStore = defineStore('openaiChat', {
       state.messages
         .filter(msg => !msg.isError)
         .map(msg => ({
-          role: msg.role,
+          role: msg.role === 'bot' ? 'assistant' : msg.role, // ✅ 핵심 수정
           content: msg.text
         }))
   },

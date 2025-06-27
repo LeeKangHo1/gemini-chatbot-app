@@ -1,9 +1,14 @@
-# backend/app/utils/logger.py
+# 📄 파일 경로: backend/app/utils/logger.py
 
 import os
 import logging
 from logging.handlers import RotatingFileHandler
 from app.config import Config
+
+class DividerFormatter(logging.Formatter):
+    def format(self, record):
+        original = super().format(record)
+        return f"{original}\n{'=' * 200}"  # 구분선 추가
 
 def setup_logger(app):
     if not os.path.exists(Config.LOG_DIR):
@@ -16,7 +21,7 @@ def setup_logger(app):
         encoding='utf-8'
     )
 
-    log_formatter = logging.Formatter(
+    log_formatter = DividerFormatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     )
     file_handler.setFormatter(log_formatter)
