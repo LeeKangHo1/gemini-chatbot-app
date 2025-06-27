@@ -25,7 +25,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useChatStore } from '../stores/geminiChatService';
+import { useChatStore } from '../stores/geminiChatStore';
 import { handleSendMessageLogic } from '../services/geminiChatService.js';
 
 import MessageList from '../components/MessageList.vue';

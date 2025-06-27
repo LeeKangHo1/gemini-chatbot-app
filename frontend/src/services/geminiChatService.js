@@ -1,6 +1,6 @@
 // 📄 파일 경로: src/services/geminiChatService.js
 
-import { useChatStore } from '../stores/geminiChatService';
+import { useChatStore } from '../stores/geminiChatStore';
 import { sendMessageToBot } from '../api/gemini';
 
 // 파일을 base64로 인코딩
