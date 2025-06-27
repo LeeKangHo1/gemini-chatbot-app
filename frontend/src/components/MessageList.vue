@@ -23,7 +23,7 @@
 import { ref, watch, nextTick, onMounted } from 'vue'
 import MessageItem from './MessageItem.vue'
 import TypingIndicator from './TypingIndicator.vue'
-import { handleSendMessageLogic } from '@/services/chatService'
+import { handleSendMessageLogic } from '@/services/geminiChatService'
 
 const props = defineProps({
   messages: Array,

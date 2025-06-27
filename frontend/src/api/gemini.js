@@ -1,4 +1,4 @@
-// src/services/api.js
+// src/services/gemini.js
 import axios from 'axios';
 
 // API 클라이언트 생성

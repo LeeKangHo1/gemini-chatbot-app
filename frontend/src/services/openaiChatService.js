@@ -1,7 +1,7 @@
-// 📄 파일 경로: src/services/chatService.js
+// 📄 파일 경로: src/services/openaiChatService.js
 
-import { useChatStore } from '../stores/chatStore';
-import { sendMessageToBot } from './api';
+import { useChatStore } from '../stores/openaiChatStore';
+import { sendMessageToBot } from '../api/openai'; // ✅ openai 전용 API 함수
 
 // 파일을 base64로 인코딩
 const convertFileToBase64 = (file) => {
@@ -19,7 +19,7 @@ const prepareImagePayloadForStore = async (file) => {
   return {
     imageData: base64Data,
     imageMimeType: file.type,
-    imageUrl: URL.createObjectURL(file)
+    imageUrl: URL.createObjectURL(file),
   };
 };
 
@@ -27,21 +27,17 @@ const prepareImagePayloadForStore = async (file) => {
 const sendUserMessage = (chatStore, userInput, imagePayload, attachmentName) => {
   chatStore.addMessage({
     role: 'user',
-    text: userInput || (imagePayload ? "이 이미지에 대해 설명해 줘." : ""),
+    text: userInput || (imagePayload ? '이 이미지에 대해 설명해 줘.' : ''),
     originalText: userInput,
     ...imagePayload,
-    ...(attachmentName && { attachmentName })
+    ...(attachmentName && { attachmentName }),
   });
 };
 
-// Gemini API로부터 응답을 받아 store에 추가
+// OpenAI API로부터 응답을 받아 store에 추가
 const sendBotResponse = async (chatStore, formData) => {
-  const response = await sendMessageToBot(formData);
-  chatStore.addMessage({ role: 'bot', text: response.reply });
-
-  if (response.sessionId) {
-    chatStore.setSessionId(response.sessionId);
-  }
+  const reply = await sendMessageToBot(formData); // ✅ 함수 이름은 Gemini와 통일
+  chatStore.addMessage({ role: 'bot', text: reply });
 };
 
 // 메시지 전송 로직의 핵심 처리 함수
@@ -49,7 +45,7 @@ export const handleSendMessageLogic = async (formData) => {
   const chatStore = useChatStore();
 
   const userInput = formData.get('message')?.trim();
-  const imageFiles = formData.getAll('imageFiles');  // ✅ 다중 이미지
+  const imageFiles = formData.getAll('imageFiles');
   const attachmentFile = formData.get('attachment');
 
   const hasImage = imageFiles.length > 0;
@@ -62,30 +58,28 @@ export const handleSendMessageLogic = async (formData) => {
 
   try {
     const imagePayloads = await Promise.all(
-      imageFiles.map(file => prepareImagePayloadForStore(file))
+      imageFiles.map((file) => prepareImagePayloadForStore(file))
     );
 
     const attachmentName = attachmentFile?.name || null;
 
     if (imagePayloads.length > 0) {
-      imagePayloads.forEach(payload => {
+      imagePayloads.forEach((payload) => {
         sendUserMessage(chatStore, userInput, payload, attachmentName);
       });
     } else {
       sendUserMessage(chatStore, userInput, null, attachmentName);
     }
 
-    // 마지막 메시지는 제외한 대화 기록 전송
     const historyForApi = chatStore.getHistoryForApi.slice(0, -1);
     formData.append('history', JSON.stringify(historyForApi));
 
     await sendBotResponse(chatStore, formData);
   } catch (error) {
-    console.error('❌ API 에러:', error);
+    console.error('❌ OpenAI API 에러:', error);
 
     let errorMessage = '❌ 메시지 처리 중 오류가 발생했습니다.';
 
-    // 백엔드에서 보낸 에러 메시지가 있으면 출력
     if (error.response?.data?.error) {
       errorMessage = `❌ ${error.response.data.error}`;
     }
@@ -95,7 +89,7 @@ export const handleSendMessageLogic = async (formData) => {
       text: errorMessage,
       isError: true,
       retry: true,
-      originalText: userInput
+      originalText: userInput,
     });
   } finally {
     chatStore.isLoading = false;

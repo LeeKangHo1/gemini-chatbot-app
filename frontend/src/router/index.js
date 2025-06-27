@@ -1,17 +1,25 @@
-// src/router/index.js
+// 📄 파일 경로: src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
-import ChatView from '../views/ChatView.vue'
+import GeminiChatView from '../views/GeminiChatView.vue'
+import OpenAIChatView from '../views/OpenAIChatView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      name: 'chat',
-      component: ChatView
+      redirect: '/gemini-chat' // 기본 경로는 Gemini로 이동
     },
-    // 여기에 나중에 다른 페이지 라우트를 추가할 수 있습니다.
-    // { path: '/about', name: 'about', component: () => import('../views/AboutView.vue') }
+    {
+      path: '/gemini-chat',
+      name: 'GeminiChat',
+      component: GeminiChatView
+    },
+    {
+      path: '/openai-chat',
+      name: 'OpenAIChat',
+      component: OpenAIChatView
+    }
   ]
 })
 

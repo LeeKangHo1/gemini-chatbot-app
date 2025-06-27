@@ -1,4 +1,4 @@
-<!-- src/views/ChatView.vue -->
+<!-- src/views/GeminiChatView.vue -->
 
 <template>
   <div class="chat-wrapper d-flex flex-column">
@@ -23,10 +23,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useChatStore } from '../stores/chatStore';
-import { handleSendMessageLogic } from '../services/chatService.js';
+import { useChatStore } from '../stores/geminiChatService';
+import { handleSendMessageLogic } from '../services/geminiChatService.js';
 
 import MessageList from '../components/MessageList.vue';
 import MessageInput from '../components/MessageInput.vue';

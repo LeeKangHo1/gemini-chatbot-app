@@ -1,4 +1,4 @@
-// src/stores/chatStore.js
+// src/stores/geminiChatStore.js
 
 import { defineStore } from 'pinia';
 
@@ -23,7 +23,7 @@ function base64ToBlobUrl(base64, mimeType) {
   }
 }
 
-export const useChatStore = defineStore('chat', {
+export const useChatStore = defineStore('geminiChat', {
   state: () => {
     const savedMessages = localStorage.getItem(CHAT_HISTORY_KEY);
     const savedSessionId = localStorage.getItem(SESSION_ID_KEY);

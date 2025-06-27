@@ -1,12 +1,21 @@
-<!-- src/App.vue -->
+<!-- 📄 파일 경로: src/App.vue -->
 <script setup>
-import { RouterView } from 'vue-router';
+import { RouterView, useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const goToGemini = () => router.push({ name: 'GeminiChat' })
+const goToOpenAI = () => router.push({ name: 'OpenAIChat' })
 </script>
 
 <template>
   <div class="app-container">
     <header class="app-header">
-      <h1 class="app-title">Gemini 챗봇</h1>
+      <!-- 챗봇 선택 버튼 -->
+      <div class="bot-selector">
+        <button class="bot-button" @click="goToGemini">Gemini 챗봇</button>
+        <button class="bot-button" @click="goToOpenAI">OpenAI 챗봇</button>
+      </div>
     </header>
 
     <main class="app-main">
@@ -20,43 +29,58 @@ import { RouterView } from 'vue-router';
 </template>
 
 <style lang="scss">
-// scoped가 아닌 전역 스타일로 일부 설정
 .app-container {
   display: flex;
   flex-direction: column;
-  align-items: center; // 모든 자식 요소를 중앙 정렬
+  align-items: center;
   min-height: 100vh;
-  padding: 2rem 1rem; // 상하 여백, 좌우 여백
+  padding: 2rem 1rem;
 }
 
 .app-header {
   width: 100%;
-  max-width: 800px; // ChatView와 동일한 최대 너비
+  max-width: 800px;
   padding: 1rem 1.5rem;
-  margin-bottom: 2rem; // 헤더와 채팅창 사이의 여백
+  margin-bottom: 2rem;
   background: linear-gradient(135deg, #6e8efb, #a777e3);
   color: white;
   text-align: center;
-  border-radius: 0.75rem; // 둥근 모서리
+  border-radius: 0.75rem;
   box-shadow: 0 4px 15px rgba(110, 142, 251, 0.4);
   transition: transform 0.2s ease-in-out;
 
   &:hover {
     transform: translateY(-2px);
   }
-}
 
-.app-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
+  .bot-selector {
+    display: flex;
+    justify-content: center;
+    gap: 1.25rem;
+  }
+
+  .bot-button {
+    font-size: 1.1rem;
+    padding: 0.75rem 1.5rem;
+    background: white;
+    color: #6e8efb;
+    border: none;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: #eef2ff;
+    }
+  }
 }
 
 .app-main {
   width: 100%;
 }
 
-// 페이지 전환 애니메이션
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
