@@ -9,7 +9,7 @@ const apiClient = axios.create({
 // Gemini API에 메시지 전송
 export const sendMessageToBot = async (formData) => {
   try {
-    const response = await apiClient.post('/api/chat', formData, {
+    const response = await apiClient.post('/api/gemini', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
